@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from geni import GeniFamilyTreeGenerator
+from geni_family_tree import GeniFamilyTreeGenerator
 
 start = datetime.now()
 

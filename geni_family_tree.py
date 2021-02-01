@@ -7,6 +7,7 @@ from queue import Queue
 from anytree import Node
 
 from family_tree import FamilyTree, Person, PersonData
+from geni_api import GeniApi
 
 GENI_BASE_URL = 'https://www.geni.com/api/'
 
@@ -25,18 +26,11 @@ def get_name(profile):
 
 class GeniFamilyTreeGenerator:
     def __init__(self):
-        with open('access-token', 'r') as f:
-            self.access_token = f.read()
-        self.base_profile = self.geni_get('profile', {})
-
-    def geni_get(self, api, args):
-        args['access_token'] = self.access_token
-        url = '{}{}?{}'.format(GENI_BASE_URL, api, urllib.parse.urlencode(args))
-        response = urllib.request.urlopen(url)
-        return json.loads(response.read())
+        self.geni = GeniApi()
+        self.base_profile = self.geni.get('profile', {})
 
     def get_immediate_family(self, profile_id):
-        j = self.geni_get('{}/{}'.format(profile_id, 'immediate-family'), {})
+        j = self.geni.get('{}/{}'.format(profile_id, 'immediate-family'), {})
         unions = filter(lambda x: x.startswith('union'), j['nodes'].keys())
         parents = []
         children = []
