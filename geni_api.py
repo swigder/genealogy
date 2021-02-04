@@ -41,21 +41,26 @@ class GeniApi:
             self.access_token = j['access_token']
             print(self.access_token)
 
-    def _request(self, method, url, args):
+    def _request(self, method, api, args):
         time.sleep(.25)  # rate limit to 40/10s
         args['access_token'] = self.access_token
+        url = f'{GENI_BASE_URL}{api}'
         response = method(url, args)
-        if response.status_code == 429:
-            time.sleep(1)
+        for i in range(1, 4):
+            if response.status_code == 200:
+                break
+            if response.status_code == 429:
+                time.sleep(i)
             response = method(url, args)
+        response.raise_for_status()
         return response.json()
 
-    def get(self, api, args):
-        return self._request(requests.get, '{}{}'.format(GENI_BASE_URL, api), args)
+    def get(self, api, args=None):
+        args = args or {}
+        return self._request(requests.get, api, args)
 
     def post(self, api, args):
-        print('{}{}'.format(GENI_BASE_URL, api), args)
-        return self._request(requests.post, '{}{}'.format(GENI_BASE_URL, api), args)
+        return self._request(requests.post, api, args)
 
     def get_profile(self, profile_id='profile', fields=None):
         args = {}
@@ -64,10 +69,10 @@ class GeniApi:
         return self.get(profile_id, args)
 
     def update_profile(self, profile_id, fields):
-        self.post('{}/{}'.format(profile_id, 'update-basics'), fields)
+        self.post(f'{profile_id}/update-basics', fields)
 
     def get_immediate_family(self, base_profile_id):
-        j = self.get('{}/{}'.format(base_profile_id, 'immediate-family'), {})
+        j = self.get(f'{base_profile_id}/immediate-family')
 
         # Update profile id for cases where the guid was used.
         base_profile_id = j['focus']['id']
