@@ -1,8 +1,5 @@
-import json
 import time
-import urllib.request
-import urllib.parse
-import urllib.error
+import requests
 from collections import defaultdict
 from enum import Enum
 
@@ -39,23 +36,42 @@ class GeniApi:
             for line in f:
                 k, v = line.strip().split(',')
                 args[k] = v
-            url = '{}?{}'.format('https://www.geni.com/platform/oauth/request_token', urllib.parse.urlencode(args))
-            print(url)
-            response = urllib.request.urlopen(url)
-            j = json.loads(response.read())
+            response = requests.get('https://www.geni.com/platform/oauth/request_token', args)
+            j = response.json()
             self.access_token = j['access_token']
             print(self.access_token)
 
-    def get(self, api, args):
+    def _request(self, method, url, args):
         time.sleep(.25)  # rate limit to 40/10s
         args['access_token'] = self.access_token
-        url = '{}{}?{}'.format(GENI_BASE_URL, api, urllib.parse.urlencode(args))
-        print(url)
-        response = urllib.request.urlopen(url)
-        return json.loads(response.read())
+        response = method(url, args)
+        if response.status_code == 429:
+            time.sleep(1)
+            response = method(url, args)
+        return response.json()
+
+    def get(self, api, args):
+        return self._request(requests.get, '{}{}'.format(GENI_BASE_URL, api), args)
+
+    def post(self, api, args):
+        print('{}{}'.format(GENI_BASE_URL, api), args)
+        return self._request(requests.post, '{}{}'.format(GENI_BASE_URL, api), args)
+
+    def get_profile(self, profile_id='profile', fields=None):
+        args = {}
+        if fields:
+            args['fields'] = ','.join(fields)
+        return self.get(profile_id, args)
+
+    def update_profile(self, profile_id, fields):
+        self.post('{}/{}'.format(profile_id, 'update-basics'), fields)
 
     def get_immediate_family(self, base_profile_id):
         j = self.get('{}/{}'.format(base_profile_id, 'immediate-family'), {})
+
+        # Update profile id for cases where the guid was used.
+        base_profile_id = j['focus']['id']
+
         nodes = j['nodes']
         profiles = _filter_node_types(nodes, 'profile')
 

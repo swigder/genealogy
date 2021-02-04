@@ -1,5 +1,3 @@
-import json
-import time
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -29,26 +27,6 @@ class GeniFamilyTreeGenerator:
         self.geni = GeniApi()
         self.base_profile = self.geni.get('profile', {})
 
-    def get_immediate_family(self, profile_id):
-        j = self.geni.get('{}/{}'.format(profile_id, 'immediate-family'), {})
-        unions = filter(lambda x: x.startswith('union'), j['nodes'].keys())
-        parents = []
-        children = []
-
-        filter_position = lambda edges, position: map(lambda x: j['nodes'][x],
-                                                      filter(lambda k: union_edges[k]['rel'] == position, edges))
-
-        for union in unions:
-            union_details = j['nodes'][union]
-            union_edges = union_details['edges']
-            profile_position = union_edges[profile_id]['rel']
-            if profile_position == 'child':
-                assert len(parents) == 0
-                parents = filter_position(edges=union_edges, position='partner')
-            elif profile_position == 'partner':
-                children += filter_position(edges=union_edges, position='child')
-        return parents, children
-
     def enqueue_all(self, queue, items_to_enqueue, parent, processed):
         for tree_child in items_to_enqueue:
             if tree_child['id'] not in processed:
@@ -69,14 +47,13 @@ class GeniFamilyTreeGenerator:
                 continue
             print('Processing', current_id, current_node.data.display_name, '...')
             try:
-                parents, children = self.get_immediate_family(current_id)
+                parents, children = self.geni.get_immediate_family(current_id)
                 self.enqueue_all(queue, parents if processing_ancestors else children, current_node, processed)
                 if processing_ancestors:
                     self.enqueue_all(new_queue, children, current_node, new_queue_keys)
                     new_queue_keys = new_queue_keys.union([child['id'] for child in children])
             except urllib.error.HTTPError as e:
                 print('Error!', e, current_node)
-            time.sleep(.25)  # rate limit to 40/10s
         return processed, new_queue
 
     def generate_tree(self, max_depth=10):

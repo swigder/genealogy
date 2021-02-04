@@ -1,1 +1,4 @@
 anytree
+pandas
+xlrd
+requests
