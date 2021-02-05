@@ -31,6 +31,8 @@ def _compute_rel_to_self(self_in_union: UnionRel,
 
 class GeniApi:
     def __init__(self):
+        self.access_token = 'gQ7CvDdyDSu8P470rc5ozTIoNontGkw2vQ0JufMp'
+        return
         with open('access-token', 'r') as f:
             args = {}
             for line in f:
@@ -52,6 +54,8 @@ class GeniApi:
             if response.status_code == 429:
                 time.sleep(i)
             response = method(url, args)
+        if response.status_code != 200:
+            print(method, url, args, response.json())
         response.raise_for_status()
         return response.json()
 

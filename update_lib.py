@@ -3,8 +3,16 @@ from collections import namedtuple
 Update = namedtuple('Update', ['message', 'update'])
 
 
-def update_items(items, get_update_fn, do_update_fn):
-    updates = [get_update_fn(item) for item in items]
+class Updater:
+    def get_update(self, key: str):
+        pass
+
+    def do_update(self, update):
+        pass
+
+
+def update_items(updater, items):
+    updates = [updater.get_update(item) for item in items]
     updates = list(filter(None, updates))
 
     if not updates:
@@ -23,5 +31,5 @@ def update_items(items, get_update_fn, do_update_fn):
     if update_confirmed:
         print(f'Continuing with {len(updates)} updates...')
         for update in updates:
-            do_update_fn(update)
+            updater.do_update(update.update)
         print('Done.')
