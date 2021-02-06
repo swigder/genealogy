@@ -1,0 +1,46 @@
+add_tree
+
+about_me: WEISZHAUZ, Ignatz BRAUN, Dina - / - (-) - / - (-) 29 20 16-May-1854 Balkany Balkany Nagy-kallo Szabolcs Bride & groom b. Balkany LDS 642900, Item 6 024-14
+last_name: WEISZHAUZ
+maiden_name: BRAUN
+first_name: Dina
+age: 20:1854
+birth_town: Balkany
+gender: f
+
+add_parents
+
+add_partner
+
+first_name: Ignatz
+age: 29:1854
+birth_town: Balkany
+gender: m
+
+add_children
+
+about_me: WEISZHAUS, Moricz EHRENFELD, Roza Ignatz / Dina (BRAUN) Josef / Fani (HOPFENBERG) 29 23 28-May-1893 Nyiregyhaza Nyiregyhaza Local Govt. Szabolcs Groom's birthplace: Balkany, Szabolcs/Bride's birthplace: Nyiregyhaza LDS 642913 3 
+first_name: Moricz
+age: 29:1893
+birth_town: Balkany
+gender: m
+
+about_me: WEISZHAUZ, David 1865 M Ignatz BRAUN Dina Nyirbator/11-09 Nyir-Bator Szabolcs Gyulaj  LDS 642911, Vol. 7
+first_name: David
+birth_year: 1865
+birth_town: Gyulaj
+gender: m
+
+set_root
+
+first_name: Moricz
+age: 29:1893
+birth_town: Balkany
+
+add_partner
+
+first_name: Roza
+maiden_name: EHRENFELD
+birth_town: Nyiregyhaza
+gender: f
+age: 23:1893

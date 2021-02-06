@@ -30,20 +30,28 @@ def _compute_rel_to_self(self_in_union: UnionRel,
 
 
 class GeniApi:
-    def __init__(self):
-        self.access_token = 'gQ7CvDdyDSu8P470rc5ozTIoNontGkw2vQ0JufMp'
-        return
+    def __init__(self, dry_run=False):
+        self.dry_run = dry_run
         with open('access-token', 'r') as f:
             args = {}
             for line in f:
+                if line.startswith('#'):
+                    continue
                 k, v = line.strip().split(',')
                 args[k] = v
-            response = requests.get('https://www.geni.com/platform/oauth/request_token', args)
-            j = response.json()
-            self.access_token = j['access_token']
-            print(self.access_token)
+        if 'access_token' in args:
+            self.access_token = args['access_token']
+            return
+        response = requests.get('https://www.geni.com/platform/oauth/request_token', args)
+        j = response.json()
+        self.access_token = j['access_token']
+        print(self.access_token)
+        print(j)
 
     def _request(self, method, api, args):
+        if self.dry_run:
+            print(method, api, args)
+            return {}
         time.sleep(.25)  # rate limit to 40/10s
         args['access_token'] = self.access_token
         url = f'{GENI_BASE_URL}{api}'
@@ -74,6 +82,16 @@ class GeniApi:
 
     def update_profile(self, profile_id, fields):
         self.post(f'{profile_id}/update-basics', fields)
+
+    def get_partner_unions(self, profile_id):
+        j = self.get(f'{profile_id}/immediate-family')
+
+        # Update profile id for cases where the guid was used.
+        base_profile_id = j['focus']['id']
+
+        profile = j['nodes'][base_profile_id]
+
+        return [union_id for union_id, union in profile['edges'].items() if union['rel'] == 'partner']
 
     def get_immediate_family(self, base_profile_id):
         j = self.get(f'{base_profile_id}/immediate-family')

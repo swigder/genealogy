@@ -1,4 +1,5 @@
 from collections import namedtuple
+from typing import List
 
 Update = namedtuple('Update', ['message', 'update'])
 
@@ -11,25 +12,35 @@ class Updater:
         pass
 
 
-def update_items(updater, items):
-    updates = [updater.get_update(item) for item in items]
-    updates = list(filter(None, updates))
+def update_items(updater, items) -> List:
+    update_confirmation = 'r'
+    updates = []
 
-    if not updates:
-        print('No updates found!')
-        return
+    while update_confirmation == 'r':
+        updates = [updater.get_update(item) for item in items]
+        updates = list(filter(None, updates))
 
-    for update in updates:
-        print(update.message)
+        if not updates:
+            update_confirmation = input('No updates found! [r]etry/[E]xit').lower().strip()
+            continue
 
-    update_confirmed = input("Confirm [y/N]").lower().strip() == 'y'
+        for update in updates:
+            print(update.message)
+
+        update_confirmation = input("Confirm [y]es/[r]etry/[N]o]").lower().strip()
+
+    update_confirmed = update_confirmation == 'y'
 
     if not update_confirmed:
         print('Cancelling...')
-        return
+        return []
 
     if update_confirmed:
         print(f'Continuing with {len(updates)} updates...')
-        for update in updates:
-            updater.do_update(update.update)
+        try:
+            results = [updater.do_update(update.update) for update in updates]
+        except Exception as e:
+            print(e)
+            raise
         print('Done.')
+        return results
