@@ -18,7 +18,7 @@ def _rel(union) -> UnionRel:
 
 
 def _compute_rel_to_self(self_in_union: UnionRel,
-                                  other_in_union: UnionRel) -> HumanRel:
+                         other_in_union: UnionRel) -> HumanRel:
     if self_in_union == UnionRel.partner and other_in_union == UnionRel.partner:
         return HumanRel.partner
     if self_in_union == UnionRel.child and other_in_union == UnionRel.child:
@@ -29,24 +29,35 @@ def _compute_rel_to_self(self_in_union: UnionRel,
         return HumanRel.parent
 
 
+def _read_csv(file_path: str):
+    data = {}
+    with open(file_path, 'r') as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+            k, v = line.strip().split(',')
+            data[k] = v
+    return data
+
+
 class GeniApi:
     def __init__(self, dry_run=False):
         self.dry_run = dry_run
-        with open('access-token', 'r') as f:
-            args = {}
-            for line in f:
-                if line.startswith('#'):
-                    continue
-                k, v = line.strip().split(',')
-                args[k] = v
-        if 'access_token' in args:
+        now = int(time.time())
+        args = _read_csv('client-info')
+        access_info = _read_csv('access-token')
+        if 'access_token' in access_info and 'expiry' in access_info and now < int(access_info['expiry']):
             self.access_token = args['access_token']
             return
+        if 'refresh_token' in access_info:
+            args['refresh_token'] = access_info['refresh_token']
+            args['grant_type'] = 'refresh_token'
         response = requests.get('https://www.geni.com/platform/oauth/request_token', args)
         j = response.json()
         self.access_token = j['access_token']
-        print(self.access_token)
-        print(j)
+        j['expiry'] = now + j['expires_in']
+        with open('access-token', 'w') as f:
+            f.writelines([f'{k},{v}\n' for k, v in j.items()])
 
     def _request(self, method, api, args):
         if self.dry_run:
@@ -131,4 +142,3 @@ if __name__ == '__main__':
         for person in people:
             print(person['first_name'], person['last_name'])
         print()
-
