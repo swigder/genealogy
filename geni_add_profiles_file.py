@@ -7,27 +7,42 @@ from update_lib import update_items, Update, Updater
 
 ProfileAdd = namedtuple('ProfileAdd', ['profile_id', 'profile', 'method'])
 
-COMMANDS = {
-    'add_tree': 'add',
-    'add_parents': 'add-parent',
-    'add_partner': 'add-partner',
-    'add_children': 'add-child',
-    'set_root': None,
+
+class Commands:
+    END_NEW = 'end_new'
+    POP_ROOTS = 'pop_roots'
+    POP_ROOT = 'pop_root'
+    PUSH_ROOT = 'push_root'
+    SET_ROOT = 'set_root'
+    UPDATE_PROFILE = 'update_profile'
+    ADD_CHILDREN = 'add_children'
+    ADD_PARTNER = 'add_partner'
+    ADD_PARENTS = 'add_parents'
+    ADD_TREE = 'add_tree'
+
+
+COMMANDS = Commands.__dict__.values()
+
+
+GENI_APIS = {
+    Commands.ADD_TREE: 'add',
+    Commands.ADD_PARENTS: 'add-parent',
+    Commands.ADD_PARTNER: 'add-partner',
+    Commands.ADD_CHILDREN: 'add-child',
+    Commands.UPDATE_PROFILE: 'update',
 }
 
 MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
 KNOWN_CITIES = {
-    'Balkany': {'city': 'Balk\u00e1ny', 'country': 'Hungary', 'postal_code': '4233',
-                'latitude': 47.7666746, 'longitude': 21.8400133},
-    'Nagyvarad': {'city': 'Oradea', 'county': 'Municipiul Oradea', 'state': 'BH', 'country': 'Romania',
-                  'postal_code': '410100', 'latitude': 47.0515885, 'longitude': 21.9428476, },
-    'Dej': {'city': 'Dej', 'county': 'Dej', 'state': 'CJ', 'country': 'Romania',
-            'postal_code': '405200', 'latitude': 47.1415878, 'longitude': 23.8787342, },
+    'Balkany': {'city': 'Balkány', 'state': 'Szabolcs-Szatmár-Bereg', 'country': 'Hungary'},
+    'Dej': {'city': 'Dej', 'state': 'Cluj', 'country': 'Romania'},
+    'Mezö-Csáth': {'city': 'Mezőcsát', 'state': 'Borsod-Abaúj-Zemplén', 'country': 'Hungary'},
+    'Nagyvarad': {'city': 'Oradea', 'state': 'Bihor', 'country': 'Romania'},
+    'Szeged': {'city': 'Szeged', 'state': 'Csongrád', 'country': 'Hungary'},
 }
 
 DEFAULTS = {
-    'is_alive': False,
     'living': False,
 }
 
@@ -40,51 +55,44 @@ DICTS = {
 }
 
 
-def key_from_file(key, file_info, _):
+def key_from_file(key, file_info):
     if key in file_info:
         return {key: file_info[key]}
     return {}
 
 
-def key_from_file_base_profile_fallback(key, file_info, base_profile):
-    if key in file_info:
-        return {key: file_info[key]}
-    if key in base_profile:
-        return {key: base_profile[key]}
-    return {}
-
-
-def key_with_default(key, file_info, _):
+def key_with_default(key, file_info):
     if key in file_info:
         return {key: file_info[key]}
     return {key: DEFAULTS[key]}
 
 
-def key_from_dict(key, file_info, _):
+def key_from_dict(key, file_info):
     if key in file_info:
-        return {key: DICTS[key][[file_info][key]]}
-    return {}
+        nonstandard_value = file_info[key]
+        return {key: DICTS[key][nonstandard_value]}
 
 
-def age_extractor(file_info, _):
+def age_extractor(file_info):
     if 'age' in file_info:
         age, year = file_info['age'].strip().split(':', maxsplit=1)
         age_years = int(year) - int(age)
         return {'birth[date][year]': age_years}
 
 
-def name_extractor(file_info, _):
-    return {'last_name': (file_info['name'].split(', ', maxsplit=1))[0],
-            'first_name': (file_info['name'].split(', ', maxsplit=1))[1]}
+def name_extractor(file_info):
+    if 'name' in file_info:
+        return {'last_name': (file_info['name'].split(', ', maxsplit=1))[0],
+                'first_name': (file_info['name'].split(', ', maxsplit=1))[1]}
 
 
-def event_extractor(event, file_info, _):
+def event_extractor(event, file_info):
     geni_data = {}
 
     if f'{event}_date' in file_info:
         day, month, year = file_info[f'{event}_date'].split('-')
         geni_data[f'{event}[date][year]'] = int(year)
-        geni_data[f'{event}[date][month]'] = MONTHS.index(month.lower()[:3])
+        geni_data[f'{event}[date][month]'] = MONTHS.index(month.lower()[:3]) + 1
         geni_data[f'{event}[date][day]'] = int(day)
 
     if f'{event}_town' in file_info:
@@ -92,21 +100,20 @@ def event_extractor(event, file_info, _):
         if event_town in KNOWN_CITIES:
             for key, value in KNOWN_CITIES[event_town].items():
                 geni_data[f'{event}[location][{key}]'] = value
+        else:
+            geni_data[f'{event}[location][city]'] = event_town
 
     return geni_data
 
 
 def extractors_for_keys(keys, extractor):
-    return [(key, partial(extractor(key))) for key in keys]
+    return [(key, partial(extractor, key)) for key in keys]
 
 
-KEYS_DEFAULT_FROM_BASE = ['last_name', 'about_me']
-
-DATA_EXTRACTORS = [('age', age_extractor)] \
-                  + extractors_for_keys(KEYS_DEFAULT_FROM_BASE, key_from_file_base_profile_fallback) \
-                  + [('name', name_extractor)] \
-                  + extractors_for_keys(['maiden_name', 'first_name'], key_from_file) \
-                  + extractors_for_keys(['birth', 'death'], event_extractor) \
+DATA_EXTRACTORS = [('age', age_extractor), ('name', name_extractor)] \
+                  + extractors_for_keys(['about_me', 'last_name', 'maiden_name', 'first_name', 'nicknames'],
+                                        key_from_file) \
+                  + extractors_for_keys(['birth', 'death', 'marriage'], event_extractor) \
                   + extractors_for_keys(DEFAULTS.keys(), key_with_default) \
                   + extractors_for_keys(DICTS.keys(), key_from_dict)
 
@@ -114,7 +121,7 @@ KEYS_CAPITALIZE = ['last_name', 'first_name', 'maiden_name']
 
 DATA_UPDATERS = {
     lambda _, v: v.strip() if isinstance(v, str) else v,
-    lambda k, v: v.capitalize() if k in KEYS_CAPITALIZE else v,
+    lambda k, v: v.title() if k in KEYS_CAPITALIZE else v,
 }
 
 
@@ -129,15 +136,28 @@ class ProfileAdder(Updater):
         profile = {}
 
         for key, extractor in DATA_EXTRACTORS:
-            profile = profile | extractor(file_profile, self.base_profile)
+            profile.update(extractor(file_profile) or {})
 
-        for key, value in profile.items():
-            for updater in DATA_UPDATERS:
+        for updater in DATA_UPDATERS:
+            for key, value in profile.items():
                 profile[key] = updater(key, value)
 
-        profile_to_add_to = self.union_id if self.union_id and self.command == 'add_children' else self.base_profile[
+        # merge with base logic
+        if self.command == Commands.UPDATE_PROFILE:
+            if 'nicknames' in profile and 'nicknames' in self.base_profile:
+                profile['nicknames'] = ','.join(profile['nicknames'].split(',') + self.base_profile['nicknames'])
+            if 'about_me' in profile and 'about_me' in self.base_profile:
+                profile['about_me'] = self.base_profile['about_me'] + '\r\n' + '-' * 10 + '\r\n' + profile['about_me']
+        else:
+            for key in ['about_me', 'last_name']:
+                if key in self.base_profile and key not in profile:
+                    profile[key] = self.base_profile[key]
+            if self.command == Commands.ADD_PARENTS and 'maiden_name' in self.base_profile:
+                profile['last_name'] = self.base_profile['maiden_name']
+
+        profile_to_add_to = self.union_id if self.union_id and self.command == Commands.ADD_CHILDREN else self.base_profile[
             'id']
-        method = COMMANDS[self.command]
+        method = GENI_APIS[self.command]
 
         return Update(f'{profile_to_add_to}/{method}: {profile}',
                       ProfileAdd(profile_id=profile_to_add_to, profile=profile, method=method))
@@ -153,6 +173,7 @@ class FileProcessor:
         self.current_command = None
         self.current_base_profile = None
         self.current_union_id = None
+        self.base_profile_stack = []
         self.all_profiles_added = []
 
     def process_file(self, filename):
@@ -160,10 +181,23 @@ class FileProcessor:
         current_infos = []
 
         with open(filename, 'r') as f:
+            line_number = 0
+            for line in f:
+                line_number += 1
+                line = line.strip()
+                if line and line not in COMMANDS and ': ' not in line:
+                    raise Exception(f'Bad line {line_number}: {line}')
+                if line == Commands.END_NEW:
+                    break
+
+        with open(filename, 'r') as f:
             for line in f:
                 line = line.strip()
+
                 if line in COMMANDS:
-                    if current_infos:
+                    if line == Commands.END_NEW:
+                        break
+                    if self.current_command:
                         self.run_current_command(current_infos)
                         current_infos = []
                     self.current_command = line
@@ -183,11 +217,12 @@ class FileProcessor:
         # run command
 
     def set_root(self, info):
-        self.current_base_profile = None
-        self.current_union_id = None
+        self.set_base_profile(None)
         if 'id' in info:
             profile_id = 'profile-g' + info['id']
-            self.current_base_profile = self.geni_api.get_profile(profile_id, fields=KEYS_DEFAULT_TO_BASE + ['id'])
+            self.set_base_profile(self.geni_api.get_profile(profile_id,
+                                                            fields=['id', 'about_me', 'last_name', 'maiden_name',
+                                                                    'nicknames', 'name']))
         else:
             for profile_keys, profile in self.all_profiles_added:
                 all_keys_match = True
@@ -196,7 +231,25 @@ class FileProcessor:
                         all_keys_match = False
                         break
                 if all_keys_match:
-                    self.current_base_profile = profile
+                    self.set_base_profile(profile)
+
+    def set_base_profile(self, profile):
+        self.current_base_profile = profile
+        self.current_union_id = None
+        if profile and 'name' in profile:
+            print(f'Base profile has been updated to {self.current_base_profile["name"]}')
+        else:
+            print('Base profile has been reset')
+
+    def update_root_stack(self):
+        if self.current_command == Commands.PUSH_ROOT:
+            self.base_profile_stack.append(self.current_base_profile)
+            self.set_base_profile(self.all_profiles_added[-1])
+        elif self.current_command == Commands.POP_ROOT:
+            self.set_base_profile(self.base_profile_stack.pop())
+        elif self.current_command == Commands.POP_ROOTS:
+            self.set_base_profile(self.base_profile_stack[0])
+            self.base_profile_stack.clear()
 
     def add_profiles(self, profiles_to_add):
         profile_adder = ProfileAdder(self.geni_api, command=self.current_command,
@@ -206,18 +259,22 @@ class FileProcessor:
         return profiles_added
 
     def run_current_command(self, infos):
-        if self.current_command == 'set_root':
+        if self.current_command == Commands.SET_ROOT:
             assert len(infos) == 1
             self.set_root(infos[0])
+        elif self.current_command in [Commands.PUSH_ROOT, Commands.POP_ROOT, Commands.POP_ROOTS]:
+            assert len(infos) == 0
+            self.update_root_stack()
         else:
-            if self.current_command == 'add_tree':
-                self.current_base_profile = {'id': 'profile'}
-            elif self.current_command == 'add_children' and not self.current_union_id:
+            if self.current_command == Commands.ADD_TREE:
+                self.set_base_profile({'id': 'profile'})
+                self.base_profile_stack = []
+            elif self.current_command == Commands.ADD_CHILDREN and not self.current_union_id:
                 unions = self.geni_api.get_partner_unions(self.current_base_profile['id'])
                 self.current_union_id = unions[0] if len(unions) == 1 else None
             just_added = self.add_profiles(profiles_to_add=infos)
-            if self.current_command == 'add_tree':
-                self.current_base_profile = just_added[0]
+            if self.current_command == Commands.ADD_TREE:
+                self.set_base_profile(just_added[0])
 
 
 if __name__ == '__main__':
