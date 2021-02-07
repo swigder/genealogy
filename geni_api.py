@@ -47,7 +47,7 @@ class GeniApi:
         args = _read_csv('client-info')
         access_info = _read_csv('access-token')
         if 'access_token' in access_info and 'expiry' in access_info and now < int(access_info['expiry']):
-            self.access_token = args['access_token']
+            self.access_token = access_info['access_token']
             return
         if 'refresh_token' in access_info:
             args['refresh_token'] = access_info['refresh_token']
