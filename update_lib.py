@@ -1,23 +1,37 @@
 from collections import namedtuple
-from typing import List
+from typing import List, Optional
 
 Update = namedtuple('Update', ['message', 'update'])
 
 
 class Updater:
-    def get_update(self, key: str):
-        pass
+    def get_updates(self, keys: List[str]) -> List[Optional[Update]]:
+        return [self.get_update(key) for key in keys]
+
+    def get_update(self, key: str) -> Optional[Update]:
+        updates = self.get_updates([key])
+        return updates[0] if updates else None
 
     def do_update(self, update):
         pass
 
 
-def update_items(updater, items) -> List:
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
+def update_items(updater, items, batch_size=1) -> List:
     update_confirmation = 'r'
     updates = []
 
     while update_confirmation == 'r':
-        updates = [updater.get_update(item) for item in items]
+        if batch_size > 1:
+            updates = [updater.get_updates(item) for item in chunks(items, batch_size)]
+            updates = [item for sublist in updates for item in sublist]
+        else:
+            updates = [updater.get_update(item) for item in items]
         updates = list(filter(None, updates))
 
         if not updates:

@@ -1,4 +1,6 @@
 import time
+from typing import List
+
 import requests
 from collections import defaultdict
 from enum import Enum
@@ -91,6 +93,13 @@ class GeniApi:
             args['fields'] = ','.join(fields)
         return self.get(profile_id, args)
 
+    def get_profiles(self, profile_ids, fields=None):
+        args = {}
+        if fields:
+            args['fields'] = ','.join(fields)
+        args['ids'] = ','.join(profile_ids)
+        return self.get('profile', args)
+
     def update_profile(self, profile_id, fields):
         self.post(f'{profile_id}/update-basics', fields)
 
@@ -133,6 +142,17 @@ class GeniApi:
             family[rel[1]].append(rel[0])
 
         return family
+
+    def get_managed_profiles(self, fields: List[str]):
+        profiles = []
+        page = {'next_page': 'random', 'page': 0}
+        while 'next_page' in page:
+            args = {'page': page['page'] + 1}
+            if fields:
+                args.update({'fields': fields})
+            page = self.get('user/managed-profiles', args=args)
+            profiles.extend(page['results'])
+        return profiles
 
 
 if __name__ == '__main__':
