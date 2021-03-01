@@ -1,4 +1,7 @@
-anytree
+anytree~=2.4.3
 pandas
 xlrd
-requests
+requests~=2.21.0
+
+pyquery~=1.4.0
+Unidecode~=1.2.0
