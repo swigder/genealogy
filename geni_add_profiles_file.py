@@ -283,7 +283,8 @@ class FileProcessor:
 
         groom_info = {k: v for k, v in info_map['groom'].items() if k not in ['parents']}
         groom_info['about_me'] = marriage_info['record']
-        groom_info['age'] = f'{groom_info["age"]}:{marriage_year}'
+        if 'age' in groom_info:
+            groom_info['age'] = f'{groom_info["age"]}:{marriage_year}'
         groom_info['gender'] = 'm'
         commands.append((Commands.ADD_TREE, groom_info))
 
@@ -292,7 +293,8 @@ class FileProcessor:
         commands.append((Commands.ADD_PARENTS, {'birth_name': groom_parents[1], 'gender': 'f'}))
 
         bride_info = {k: v for k, v in info_map['bride'].items() if k not in ['parents']}
-        bride_info['age'] = f'{bride_info["age"]}:{marriage_year}'
+        if 'age' in bride_info:
+            bride_info['age'] = f'{bride_info["age"]}:{marriage_year}'
         bride_info['gender'] = 'f'
         bride_info['birth_name'] = bride_info['name']
         del bride_info['name']
@@ -300,10 +302,11 @@ class FileProcessor:
         bride_info['marriage_town'] = marriage_info['town']
         commands.append((Commands.ADD_PARTNER, bride_info))
 
-        commands.append((Commands.PUSH_ROOT, {}))
-        bride_parents = info_map['bride']['parents'].split('/')
-        commands.append((Commands.ADD_PARENTS, {'first_name': bride_parents[0], 'gender': 'm'}))
-        commands.append((Commands.ADD_PARENTS, {'birth_name': bride_parents[1], 'gender': 'f'}))
+        if 'parents' in info_map['bride']:
+            commands.append((Commands.PUSH_ROOT, {}))
+            bride_parents = info_map['bride']['parents'].split('/')
+            commands.append((Commands.ADD_PARENTS, {'first_name': bride_parents[0], 'gender': 'm'}))
+            commands.append((Commands.ADD_PARENTS, {'birth_name': bride_parents[1], 'gender': 'f'}))
 
         return commands
 

@@ -25,6 +25,9 @@ COUNTRIES_TO_COUNTIES_TO_CITIES = {
             'Nyiregyhaza'
             'Nyírmada',
         ],
+        'Tolna': [
+            'Bonyhád',
+        ],
         'Vas': [
             'Nagyrákos',
         ],
@@ -48,6 +51,9 @@ COUNTRIES_TO_COUNTIES_TO_CITIES = {
         'Satu Mare': [
             ['Giorocuta', 'Girókuta'],
             ['Satu Mare', 'Szatmar', 'Szatmárnémeti'],
+        ],
+        'Timiș': [
+            ['Timișoara', 'Temesvár'],
         ],
     },
     'Slovakia': {
